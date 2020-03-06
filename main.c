@@ -24,7 +24,8 @@ int main(void)
   time_t t;
   srand((unsigned) time(&t));
   int id[NumberOfBuyers];
-  for(int i=0;i<5;i++) //инициализация первичных товаров
+
+  for(int i=0;i<5;i++) //инициализация первичных товаров в магазинах
   {
     pthread_mutex_unlock(&busy[i]);
     shops[i]=190+rand()%11;
@@ -34,6 +35,7 @@ int main(void)
     buyers[i]=1000;//+rand()%251; //проверял на 1000, чтобы быстрее было
     id[i]=i;
   }
+
   pthread_t loader;
   pthread_t buyersThread[NumberOfBuyers];
   pthread_create(&loader, NULL, load, NULL);
@@ -49,13 +51,13 @@ void
 get_load_busy (int shopId)
 {
   pthread_mutex_lock (&busy[shopId]);
-  //printf ("Магазин %d: Теперь занят погрузчиком\n", shopId);
+  printf ("Магазин %d: Теперь занят погрузчиком\n", shopId);
 }
 
 void
 get_load_free (int shopId)
 {
-  //printf ("Магазин %d: Теперь свободен от погрузчика\n", shopId);
+  printf ("Магазин %d: Теперь свободен от погрузчика\n", shopId);
   pthread_mutex_unlock (&busy[shopId]);
 }
 
@@ -66,10 +68,10 @@ load ()
   {
     int shopId = rand()%5;
     get_load_busy(shopId);
-    //printf("Погрузчик начал грузить товар в магазин %d\n", shopId);
+    printf("Погрузчик начал грузить товар в магазин %d\n", shopId);
     shops[shopId]+=150;
-    //printf("Теперь в магазине %d стало товара: %d\n", shopId, shops[shopId]);
-    //printf("Погрузчик уснул\n");
+    printf("Теперь в магазине %d стало товара: %d\n", shopId, shops[shopId]);
+    printf("Погрузчик уснул\n");
     get_load_free(shopId);
     sleep(2);
   }
@@ -79,13 +81,13 @@ void
 get_buyer_busy (int buyerId, int shopId)
 {
   pthread_mutex_lock (&busy[shopId]);
-  //printf ("Магазин %d: Теперь занят покупателем %d\n", shopId, buyerId);
+  printf ("Магазин %d: Теперь занят покупателем %d\n", shopId, buyerId);
 }
 
 void
 get_buyer_free (int buyerId, int shopId)
 {
-  //printf ("Магазин %d: Теперь свободен от покупателя %d\n", shopId, buyerId);
+  printf ("Магазин %d: Теперь свободен от покупателя %d\n", shopId, buyerId);
   pthread_mutex_unlock (&busy[shopId]);
 }
 

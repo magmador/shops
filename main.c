@@ -1,7 +1,7 @@
-#include <pthread.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define NUMBER_OF_SHOPS  5
 #define NUMBER_OF_BUYERS 3

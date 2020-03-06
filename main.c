@@ -2,118 +2,150 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#define NumberOfShops   5
-#define NumberOfBuyers 3
 
-int buyers[NumberOfBuyers]; //3 покупателя
-int shops[NumberOfShops]; //5 магазинов
-pthread_mutex_t busy[NumberOfShops]; //5 магазинов могут быть заняты
+#define NUMBER_OF_SHOPS  5
+#define NUMBER_OF_BUYERS 3
+
+#define MIN_GOODS_IN_SHOP 190
+#define GOODS_SCATTER     10
+#define BUYER_SCATTER     250
+#define BUYER_NEEDED      1000
+
+#define ID_TO_INDEX(X) *((int *)X)
+
+int buyers[NUMBER_OF_BUYERS];          //3 покупателя
+int shops[NUMBER_OF_SHOPS];            //5 магазинов
+pthread_mutex_t busy[NUMBER_OF_SHOPS]; //5 магазинов могут быть заняты
 
 //функции погрузчика
-void  get_load_busy (int shopId);
-void  get_load_free (int shopId);
-void* load ();
+void get_load_busy(int shopId);
+void get_load_free(int shopId);
+void *load();
 
 //функции покупателей
-void  get_buyer_busy (int shopId, int buyerId);
-void  get_buyer_free (int shopId, int buyerId);
-void* buy (void* buyerId);
+void get_buyer_busy(int shopId, int buyerId);
+void get_buyer_free(int shopId, int buyerId);
+void *buy(void *buyerId);
 
 int main(void)
 {
-  time_t t;
-  srand((unsigned) time(&t));
-  int id[NumberOfBuyers];
+	time_t t;
+	srand((unsigned int)time(&t));
 
-  for(int i=0;i<5;i++) //инициализация первичных товаров в магазинах
-  {
-    pthread_mutex_unlock(&busy[i]);
-    shops[i]=190+rand()%11;
-  }
-  for(int i=0;i<3;i++) //инициализация потребности первичных покупателей
-  {
-    buyers[i]=1000;//+rand()%251; //проверял на 1000, чтобы быстрее было
-    id[i]=i;
-  }
+	for (int i = 0; i < NUMBER_OF_SHOPS; i++) //инициализация первичных товаров
+	{
+		pthread_mutex_unlock(&busy[i]);
+		shops[i] = MIN_GOODS_IN_SHOP + rand() % GOODS_SCATTER;
+	}
 
-  pthread_t loader;
-  pthread_t buyersThread[NumberOfBuyers];
-  pthread_create(&loader, NULL, load, NULL);
-  for(int i=0;i<3;i++)
-    pthread_create(&buyersThread[i], NULL, buy, &id[i]);
-  for(int i=0;i<3;i++)
-    pthread_join(buyersThread[i], NULL);
-  pthread_cancel(loader);
-  return 0;
+	int id[NUMBER_OF_BUYERS];
+	for (int i = 0; i < NUMBER_OF_BUYERS; i++) //инициализация потребности первичных покупателей
+	{
+		buyers[i] = BUYER_NEEDED + rand() % BUYER_SCATTER; //проверял на 1000, чтобы быстрее было
+		id[i] = i;
+	}
+
+	pthread_t loader;
+	pthread_create(&loader, NULL, load, NULL);
+
+	pthread_t buyersThread[NUMBER_OF_BUYERS];
+	for (int i = 0; i < NUMBER_OF_BUYERS; i++)
+		pthread_create(&buyersThread[i], NULL, buy, &id[i]);
+
+	for (int i = 0; i < NUMBER_OF_BUYERS; i++)
+		pthread_join(buyersThread[i], NULL);
+
+	pthread_cancel(loader);
+	return EXIT_SUCCESS;
 }
 
-void
-get_load_busy (int shopId)
+void get_load_busy(int shopId)
 {
-  pthread_mutex_lock (&busy[shopId]);
-  printf ("Магазин %d: Теперь занят погрузчиком\n", shopId);
+	pthread_mutex_lock(&busy[shopId]);
+#ifdef DEBUG
+	printf("Магазин %d: Теперь занят погрузчиком\n", shopId);
+#endif //!DEBUG
 }
 
-void
-get_load_free (int shopId)
+void get_load_free(int shopId)
 {
-  printf ("Магазин %d: Теперь свободен от погрузчика\n", shopId);
-  pthread_mutex_unlock (&busy[shopId]);
+#ifdef DEBUG
+	printf("Магазин %d: Теперь свободен от погрузчика\n", shopId);
+#endif //!DEBUG
+	pthread_mutex_unlock(&busy[shopId]);
 }
 
-void*
-load ()
+void *load()
 {
-  while(1)
-  {
-    int shopId = rand()%5;
-    get_load_busy(shopId);
-    printf("Погрузчик начал грузить товар в магазин %d\n", shopId);
-    shops[shopId]+=150;
-    printf("Теперь в магазине %d стало товара: %d\n", shopId, shops[shopId]);
-    printf("Погрузчик уснул\n");
-    get_load_free(shopId);
-    sleep(2);
-  }
+	while (1)
+	{
+		int shopToLoad = rand() % NUMBER_OF_SHOPS;
+
+		get_load_busy(shopToLoad);
+#ifdef DEBUG
+		printf("Погрузчик начал грузить товар в магазин %d\n", shopToLoad);
+#endif //!DEBUG
+
+		shops[shopToLoad] += BUYER_NEEDED;
+#ifdef DEBUG
+		printf("Теперь в магазине %d стало товара: %d\n", shopToLoad, shops[shopToLoad]);
+#endif //!DEBUG
+
+		get_load_free(shopToLoad);
+#ifdef DEBUG
+		printf("Погрузчик уснул\n");
+#endif //!DEBUG
+		sleep(2);
+	}
 }
 
-void
-get_buyer_busy (int buyerId, int shopId)
+void get_buyer_busy(int buyerId, int shopId)
 {
-  pthread_mutex_lock (&busy[shopId]);
-  printf ("Магазин %d: Теперь занят покупателем %d\n", shopId, buyerId);
+	pthread_mutex_lock(&busy[shopId]);
+#ifdef DEBUG
+	printf("Магазин %d: Теперь занят покупателем %d\n", shopId, buyerId);
+#endif //!DEBUG
 }
 
-void
-get_buyer_free (int buyerId, int shopId)
+void get_buyer_free(int buyerId, int shopId)
 {
-  printf ("Магазин %d: Теперь свободен от покупателя %d\n", shopId, buyerId);
-  pthread_mutex_unlock (&busy[shopId]);
+#ifdef DEBUG
+	printf("Магазин %d: Теперь свободен от покупателя %d\n", shopId, buyerId);
+#endif //!DEBUG
+	pthread_mutex_unlock(&busy[shopId]);
 }
 
-void*
-buy (void* buyerId)
+void *buy(void *buyerId)
 {
-  int shopId;
-  while(1)
-  {
-    shopId=rand()%5; //покупатель идёт в случайный магазин
-    if(buyers[*((int*)buyerId)]<=0)
-    {
-      //после того, как у покупателя закончилась потребность, поток завершается
-      pthread_exit(NULL);
-    }
-    else
-    {
-      get_buyer_busy(*((int *)buyerId), shopId); //лочит мьютекс
-      printf("Покупатель %d начал покупать товар в магазине %d\n", *((int *)buyerId), shopId);
-      buyers[*((int *)buyerId)]-=shops[shopId];
-      printf("Покупатель %d ещё имеет потребность: %d\n", *((int *)buyerId), buyers[shopId]);
-      shops[shopId]=0;
-      printf("Покупатель %d очистил магазин %d\n", *((int *)buyerId), shopId);
-      printf("Покупатель %d уснул\n", *((int *)buyerId));
-      get_buyer_free(*((int *)buyerId), shopId); //анлочит мьютек
-      sleep(1); //и засыпает
-    }
-  }
+	int shopToGo;
+	while (1)
+	{
+		shopToGo = rand() % NUMBER_OF_SHOPS; //покупатель идёт в случайный магазин
+		if (buyers[ID_TO_INDEX(buyerId)] <= 0)
+		{
+			//после того, как у покупателя закончилась потребность, поток завершается
+			pthread_exit(NULL);
+		}
+		else
+		{
+			get_buyer_busy(ID_TO_INDEX(buyerId), shopToGo); //лочит мьютекс
+#ifdef DEBUG
+			printf("Покупатель %d начал покупать товар в магазине %d\n", ID_TO_INDEX(buyerId), shopToGo);
+#endif //!DEBUG
+
+			buyers[ID_TO_INDEX(buyerId)] -= shops[shopToGo];
+#ifdef DEBUG
+			printf("Покупатель %d ещё имеет потребность: %d\n", ID_TO_INDEX(buyerId), buyers[shopToGo]);
+#endif //!DEBUG
+
+			shops[shopToGo] = 0;
+#ifdef DEBUG
+			printf("Покупатель %d очистил магазин %d\n", ID_TO_INDEX(buyerId), shopToGo);
+#endif //!DEBUG
+
+			get_buyer_free(ID_TO_INDEX(buyerId), shopToGo); //анлочит мьютек
+			printf("Покупатель %d уснул\n", ID_TO_INDEX(buyerId));
+			sleep(1);                                      //и засыпает
+		}
+	}
 }
